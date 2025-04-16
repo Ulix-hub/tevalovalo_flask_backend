@@ -1,8 +1,9 @@
-
 from flask import Flask, jsonify
+from flask_cors import CORS  # ✅ Add this
 from ticket_generator_module import generate_full_strip
 
 app = Flask(__name__)
+CORS(app)  # ✅ This enables cross-origin access
 
 @app.route("/")
 def index():
