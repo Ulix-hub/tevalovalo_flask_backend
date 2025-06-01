@@ -1,75 +1,117 @@
+
 import random
+from typing import List, Optional
 
-COLUMN_RANGES = {
-    0: list(range(1, 10)),
-    1: list(range(10, 20)),
-    2: list(range(20, 30)),
-    3: list(range(30, 40)),
-    4: list(range(40, 50)),
-    5: list(range(50, 60)),
-    6: list(range(60, 70)),
-    7: list(range(70, 80)),
-    8: list(range(80, 91)),
-}
+def generate_full_strip() -> List[List[List[Optional[int]]]]:
+    COLUMN_RANGES = {
+        0: list(range(1, 10)),
+        1: list(range(10, 20)),
+        2: list(range(20, 30)),
+        3: list(range(30, 40)),
+        4: list(range(40, 50)),
+        5: list(range(50, 60)),
+        6: list(range(60, 70)),
+        7: list(range(70, 80)),
+        8: list(range(80, 91)),
+    }
 
-def generate_full_strip():
-    while True:
+    max_per_column = {0: 9, 8: 11}
+    for c in range(1, 8):
+        max_per_column[c] = 10
+
+    for attempt in range(500):
         try:
-            col_distribution = {0: 9, 8: 11}
-            for c in range(1, 8):
-                col_distribution[c] = 10
+            col_usage = [0] * 9
+            layouts = []
 
-            # Prepare column numbers
+            for _ in range(6):
+                for layout_attempt in range(1000):
+                    layout = [[0 for _ in range(9)] for _ in range(3)]
+                    row_counts = [0] * 3
+                    col_counts = [0] * 9
+                    temp_col_usage = [0] * 9
+                    filled = 0
+
+                    for col in random.sample(range(9), 9):
+                        possible_rows = [r for r in range(3) if row_counts[r] < 5 and col_counts[col] < 3]
+                        if not possible_rows or col_usage[col] + temp_col_usage[col] >= max_per_column[col]:
+                            break
+                        row = random.choice(possible_rows)
+                        layout[row][col] = 1
+                        row_counts[row] += 1
+                        col_counts[col] += 1
+                        temp_col_usage[col] += 1
+                        filled += 1
+                    else:
+                        tries = 0
+                        while filled < 15 and tries < 3000:
+                            possible_cells = [
+                                (r, c)
+                                for r in range(3) for c in range(9)
+                                if layout[r][c] == 0 and
+                                   row_counts[r] < 5 and
+                                   col_counts[c] < 3 and
+                                   col_usage[c] + temp_col_usage[c] < max_per_column[c]
+                            ]
+                            if not possible_cells:
+                                break
+                            r, c = random.choice(possible_cells)
+                            layout[r][c] = 1
+                            row_counts[r] += 1
+                            col_counts[c] += 1
+                            temp_col_usage[c] += 1
+                            filled += 1
+                            tries += 1
+
+                        if filled == 15 and all(rc == 5 for rc in row_counts):
+                            for c in range(9):
+                                col_usage[c] += temp_col_usage[c]
+                            layouts.append(layout)
+                            break
+                else:
+                    raise ValueError("Ticket layout failed")
+
             column_numbers = {
-                c: random.sample(COLUMN_RANGES[c], col_distribution[c])
+                c: random.sample(COLUMN_RANGES[c], max_per_column[c])
                 for c in range(9)
             }
 
             strip = []
-            used_numbers = set()
-
-            for _ in range(6):
+            for layout in layouts:
                 ticket = [[None for _ in range(9)] for _ in range(3)]
-                row_counts = [0, 0, 0]
-                col_counts = [0] * 9
-                filled = 0
-                attempts = 0
 
-                while filled < 15 and attempts < 100:
-                    r = random.randint(0, 2)
-                    c = random.randint(0, 8)
-                    if (
-                        ticket[r][c] is None
-                        and row_counts[r] < 5
-                        and col_counts[c] < 3
-                        and column_numbers[c]
-                    ):
-                        n = column_numbers[c].pop()
-                        if n not in used_numbers:
-                            ticket[r][c] = n
-                            used_numbers.add(n)
-                            row_counts[r] += 1
-                            col_counts[c] += 1
-                            filled += 1
-                    attempts += 1
-
-                if filled < 15 or any(row.count(None) != 4 for row in ticket):
-                    raise Exception("Ticket fill failed. Retrying...")
+                for col in range(9):
+                    positions = [(r, col) for r in range(3) if layout[r][col] == 1]
+                    values = sorted([column_numbers[col].pop() for _ in range(len(positions))])
+                    for (r, c), val in zip(positions, values):
+                        ticket[r][c] = val
 
                 strip.append(ticket)
 
-            # ✅ Enforce column-wise ascending order within each ticket
-            for ticket in strip:
-                for col in range(9):
-                    col_nums = [ticket[row][col] for row in range(3) if ticket[row][col] is not None]
-                    col_nums.sort()
-                    i = 0
-                    for row in range(3):
-                        if ticket[row][col] is not None:
-                            ticket[row][col] = col_nums[i]
-                            i += 1
-
             return strip
-
-        except:
+        except Exception:
             continue
+
+    raise ValueError("Failed to generate valid strip after many attempts")
+
+def get_column(number: int) -> int:
+    if 1 <= number <= 9:
+        return 0
+    elif 10 <= number <= 19:
+        return 1
+    elif 20 <= number <= 29:
+        return 2
+    elif 30 <= number <= 39:
+        return 3
+    elif 40 <= number <= 49:
+        return 4
+    elif 50 <= number <= 59:
+        return 5
+    elif 60 <= number <= 69:
+        return 6
+    elif 70 <= number <= 79:
+        return 7
+    elif 80 <= number <= 90:
+        return 8
+    else:
+        raise ValueError("Number out of range")

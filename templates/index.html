@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tevalovalo Housie90</title>
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+    h1 {
+      padding: 20px;
+      background-color: #007bff;
+      color: white;
+      margin: 0;
+    }
+    .buttons {
+      margin: 20px 0;
+    }
+    select, button {
+      padding: 12px 20px;
+      margin: 0 10px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+    }
+    select {
+      background-color: #f8f9fa;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+    }
+    .ticket-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-bottom: 100px;
+    }
+    .card-label {
+      font-weight: bold;
+      margin-top: 30px;
+      margin-bottom: 10px;
+      font-size: 18px;
+      color: #333;
+    }
+    .ticket {
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .ticket td {
+      width: 40px;
+      height: 40px;
+      border: 1px solid #ccc;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    .marked {
+      background-color: #d1e7dd;
+    }
+    .row-complete {
+      background-color: #ffc107 !important;
+    }
+    .ticket-complete td {
+      background-color: #28a745 !important;
+      color: white;
+    }
+    .blink {
+      animation: blinker 1s linear infinite;
+    }
+    @keyframes blinker {
+      50% { opacity: 0.3; }
+    }
+    footer {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background-color: #007bff;
+      color: white;
+      padding: 10px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tevalovalo Housie90</h1>
+  <div class="buttons">
+    <label for="cardCount">Number of Cards:</label>
+    <select id="cardCount">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6" selected>6</option>
+    </select>
+    <button onclick="generateTickets()">Generate Tickets</button>
+    <button onclick="resetTickets()">Reset</button>
+  </div>
+  <div id="ticketArea" class="ticket-container"></div>
+  <footer>Tevalovalo Housie90 &copy; 2025</footer>
+
+  <script>
+    const API_URL = 'https://tevalovalo_flask_backend.onrender.com/api/tickets';
+
+    function generateTickets() {
+      const cardCount = parseInt(document.getElementById('cardCount').value);
+      const ticketArea = document.getElementById('ticketArea');
+      ticketArea.innerHTML = '';
+
+      const promises = Array.from({ length: cardCount }, () => fetch(API_URL).then(r => r.json()));
+      Promise.all(promises).then(allCards => {
+        allCards.forEach((card, cardIndex) => {
+          const cardLabel = document.createElement('div');
+          cardLabel.className = 'card-label';
+          cardLabel.textContent = `Card ${cardIndex + 1}`;
+          ticketArea.appendChild(cardLabel);
+
+          card.forEach((ticket, i) => renderTicket(ticket, `${cardIndex + 1}-${i + 1}`));
+        });
+      }).catch(err => alert('Error fetching tickets'));
+    }
+
+    function renderTicket(ticket, ticketIndex) {
+      const container = document.getElementById('ticketArea');
+      const table = document.createElement('table');
+      table.className = 'ticket';
+      table.dataset.ticketIndex = ticketIndex;
+
+      ticket.forEach((row, rowIndex) => {
+        const tr = document.createElement('tr');
+        row.forEach((cell, colIndex) => {
+          const td = document.createElement('td');
+          td.textContent = cell === null ? '' : cell;
+          td.dataset.number = cell;
+          if (cell !== null) {
+            td.addEventListener('click', () => {
+              markAllCells(cell);
+            });
+          }
+          tr.appendChild(td);
+        });
+        table.appendChild(tr);
+      });
+
+      container.appendChild(table);
+    }
+
+    function markAllCells(number) {
+      const cells = document.querySelectorAll(`td[data-number='${number}']`);
+      cells.forEach(cell => {
+        cell.classList.toggle('marked');
+      });
+
+      const tables = document.querySelectorAll('.ticket');
+      tables.forEach(checkRowAndTicketComplete);
+    }
+
+    function checkRowAndTicketComplete(table) {
+      let ticketComplete = true;
+      const rows = table.querySelectorAll('tr');
+
+      rows.forEach(tr => {
+        const cells = Array.from(tr.children);
+        const numberCells = cells.filter(td => td.textContent.trim() !== '');
+        const markedCells = numberCells.filter(td => td.classList.contains('marked'));
+
+        numberCells.forEach(td => {
+          td.classList.remove('row-complete');
+          td.classList.remove('blink');
+        });
+
+        if (markedCells.length === numberCells.length) {
+          numberCells.forEach(td => td.classList.add('row-complete'));
+        } else {
+          if (numberCells.length - markedCells.length === 1) {
+            const unmarked = numberCells.find(td => !td.classList.contains('marked'));
+            if (unmarked) unmarked.classList.add('blink');
+          }
+          ticketComplete = false;
+        }
+      });
+
+      if (ticketComplete) {
+        table.classList.add('ticket-complete');
+      } else {
+        table.classList.remove('ticket-complete');
+      }
+    }
+
+    function resetTickets() {
+      document.getElementById('ticketArea').innerHTML = '';
+    }
+  </script>
+</body>
+</html>

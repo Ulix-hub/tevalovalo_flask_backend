@@ -1,18 +1,19 @@
+
 from flask import Flask, jsonify
-from flask_cors import CORS  # ✅ Add this
+from flask_cors import CORS
 from ticket_generator_module import generate_full_strip
 
 app = Flask(__name__)
-CORS(app)  # ✅ This enables cross-origin access
+CORS(app)
 
-@app.route("/")
-def index():
-    return "<h2>Tevalovalo Backend Running ✅</h2><p>Use /generate to get tickets</p>"
+@app.route('/api/tickets')
+def get_tickets():
+    try:
+        tickets = generate_full_strip()
+        return jsonify(tickets)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-@app.route("/generate")
-def generate():
-    tickets = generate_full_strip()
-    return jsonify(tickets)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
 
-if __name__ == "__main__":
-    app.run(debug=True)
